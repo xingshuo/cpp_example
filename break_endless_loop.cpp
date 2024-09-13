@@ -13,7 +13,7 @@ using std::atomic;
 using std::thread;
 
 pthread_t g_main_tid;
-jmp_buf* g_jmpbuf_ptr;
+jmp_buf g_jmpbuf;
 atomic<int> g_tick_no(0);
 int g_break_sig = SIGURG;
 int g_monitor_check_interval = 5; // seconds
@@ -55,7 +55,7 @@ void signal_handler(int signum) {
     pthread_t curr_tid = pthread_self();
     cout << "recv break sig:" << signum << " on thread:" << curr_tid << "\n";
     assert(curr_tid == g_main_tid);
-    longjmp(*g_jmpbuf_ptr, 1);
+    longjmp(g_jmpbuf, 1);
     cout << "never run here!\n";
 }
 
@@ -75,9 +75,7 @@ int main()
     while (true)
     {
         g_tick_no++;
-        jmp_buf jb;
-        g_jmpbuf_ptr = &jb;
-        if (setjmp(jb) == 0) {
+        if (setjmp(g_jmpbuf) == 0) {
             app_update(g_tick_no.load());
         } else {
             // 解除主线程信号屏蔽
